@@ -1,0 +1,48 @@
+{
+    "name": "soclose010/monolog-max",
+    "description": "Monolog handler that sends logs through MAX bot",
+    "type": "library",
+    "keywords": [
+        "monolog",
+        "max",
+        "logger",
+        "handler",
+        "bot"
+    ],
+    "support": {
+        "issues": "https://github.com/Soclose010/monolog-max/issues",
+        "source": "https://github.com/Soclose010/monolog-max"
+    },
+    "require": {
+        "php": ">=8.1",
+        "monolog/monolog": "^3.10",
+        "ext-curl": "*",
+        "ext-mbstring": "*"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Soclose010\\MonologMax\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Soclose010\\MonologMax\\Tests\\": "tests/"
+        }
+    },
+    "authors": [
+        {
+            "name": "soclose010"
+        }
+    ],
+    "require-dev": {
+        "phpunit/phpunit": "^10.5",
+        "vlucas/phpdotenv": "^5.6",
+        "squizlabs/php_codesniffer": "^3.2"
+    },
+    "scripts": {
+        "check-code": "\"vendor/bin/phpcs\" -snp --standard=PSR12 --encoding=utf-8 --report-width=150 src/ tests/",
+        "fix-code": "\"vendor/bin/phpcbf\" -snp --standard=PSR12 --encoding=utf-8 --report-width=150 src/ tests/",
+        "test": "phpunit"
+    }
+}
