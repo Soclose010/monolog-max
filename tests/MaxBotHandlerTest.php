@@ -23,10 +23,11 @@ class MaxBotHandlerTest extends TestCase
             Dotenv::createImmutable(dirname(__DIR__))->safeLoad();
         }
 
-        $this->accessToken = $_ENV['MAX_TOKEN'] ?? getenv('MAX_TOKEN');
+        $accessToken = $_ENV['MAX_TOKEN'] ?? getenv('MAX_TOKEN');
         $userId = $_ENV['MAX_USER_ID'] ?? getenv('MAX_USER_ID');
         $chatId = $_ENV['MAX_CHAT_ID'] ?? getenv('MAX_CHAT_ID');
 
+        $this->accessToken = $accessToken === false || $accessToken === '' ? null : (string) $accessToken;
         $this->userId = $userId === false || $userId === '' ? null : (int) $userId;
         $this->chatId = $chatId === false || $chatId === '' ? null : (int) $chatId;
     }
@@ -132,6 +133,14 @@ class MaxBotHandlerTest extends TestCase
         $this->expectExceptionMessage('Таймаут запроса к MAX API должен быть больше 0.');
 
         new MaxBotHandler('token', 1, timeout: 0);
+    }
+
+    public function testBaseUrlMustNotBeEmpty(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Базовый URL MAX API не должен быть пустым.');
+
+        new MaxBotHandler('token', 1, baseUrl: '   ');
     }
 
     public function testFormatValidation(): void
