@@ -16,7 +16,13 @@ use RuntimeException;
 
 class MaxBotHandler extends AbstractProcessingHandler
 {
-    private const BOT_API = 'https://platform-api.max.ru';
+    /**
+     * Базовый URL MAX Bot API по умолчанию.
+     * Документация указывает на platform-api2, но его сертификат выписан НУЦ Минцифры,
+     * которого нет в стандартных хранилищах доверия, поэтому умолчание оставлено прежним.
+     * Переключение — параметром $baseUrl конструктора, см. README.
+     */
+    private const DEFAULT_BOT_API = 'https://platform-api.max.ru';
 
     /**
      * Доступные варианты поля format согласно MAX api docs
@@ -70,6 +76,11 @@ class MaxBotHandler extends AbstractProcessingHandler
     private int $timeout;
 
     /**
+     * Базовый URL MAX Bot API без завершающего слэша.
+     */
+    private string $baseUrl;
+
+    /**
      * @param string           $accessToken        Токен доступа MAX bot API
      * @param int|null         $userId             Идентификатор пользователя, кому отправится сообщение
      * @param int|null         $chatId             Идентификатор чата, в который отправится сообщение
@@ -77,6 +88,7 @@ class MaxBotHandler extends AbstractProcessingHandler
      * @param bool|null        $disableLinkPreview Отключить превью для ссылок в сообщении
      * @param bool             $splitLongMessages  Разделять длинные сообщения или обрезать их
      * @param int              $timeout            Таймаут запроса к MAX API в секундах
+     * @param string|null      $baseUrl            Базовый URL MAX Bot API; null — DEFAULT_BOT_API
      */
     public function __construct(
         string $accessToken,
@@ -88,6 +100,7 @@ class MaxBotHandler extends AbstractProcessingHandler
         ?bool $disableLinkPreview = true,
         bool $splitLongMessages = true,
         int $timeout = 10,
+        ?string $baseUrl = null,
     ) {
         if ($accessToken === '') {
             throw new InvalidArgumentException('Токен доступа MAX не должен быть пустым.');
@@ -95,6 +108,10 @@ class MaxBotHandler extends AbstractProcessingHandler
 
         if ($timeout < 1) {
             throw new InvalidArgumentException('Таймаут запроса к MAX API должен быть больше 0.');
+        }
+
+        if ($baseUrl !== null && trim($baseUrl) === '') {
+            throw new InvalidArgumentException('Базовый URL MAX API не должен быть пустым.');
         }
 
         if ($userId === null && $chatId === null) {
@@ -107,6 +124,7 @@ class MaxBotHandler extends AbstractProcessingHandler
         $this->userId = $userId;
         $this->chatId = $chatId;
         $this->timeout = $timeout;
+        $this->baseUrl = rtrim($baseUrl ?? self::DEFAULT_BOT_API, '/');
         $this->setFormat($format);
         $this->disableLinkPreview($disableLinkPreview);
         $this->splitLongMessages($splitLongMessages);
@@ -202,7 +220,7 @@ class MaxBotHandler extends AbstractProcessingHandler
         ];
 
         $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, self::BOT_API . '/messages?' . http_build_query($query));
+        curl_setopt($ch, CURLOPT_URL, $this->baseUrl . '/messages?' . http_build_query($query));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, $this->timeout);
