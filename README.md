@@ -97,25 +97,7 @@ $handler = new MaxBotHandler(
 
 ## Устойчивость: сбои отправки и повторы
 
-Handler сообщает о неудачной отправке исключением `RuntimeException` — так же, как штатный `TelegramBotHandler` из Monolog. Решение о том, что делать со сбоем, остаётся за приложением. Это важно, когда логи уходят в MAX прямо из обработчика ошибок: недоступность мессенджера не должна подменять собой исходную аварию.
-
-Чтобы сбой отправки не всплывал в приложение, оберните handler в `WhatFailureGroupHandler`:
-
-```php
-use Monolog\Handler\WhatFailureGroupHandler;
-
-$logger->pushHandler(new WhatFailureGroupHandler([$handler]));
-```
-
-Чтобы одна и та же ошибка не заливала чат (зациклившийся баг — это тысячи одинаковых записей), добавьте `DeduplicationHandler`:
-
-```php
-use Monolog\Handler\DeduplicationHandler;
-
-$logger->pushHandler(new DeduplicationHandler($handler, time: 60));
-```
-
-Обёртки комбинируются: `WhatFailureGroupHandler` снаружи, `DeduplicationHandler` внутри.
+`MaxBotHandler` выбрасывает `RuntimeException`, если отправка сообщения не удалась. При необходимости обработку ошибок и повторяющихся сообщений можно настроить стандартными `handler'ами` Monolog.
 
 ## Как получить ID получателя
 
