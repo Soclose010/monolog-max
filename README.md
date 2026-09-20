@@ -38,6 +38,7 @@ $handler = new MaxBotHandler(
     disableLinkPreview: true,  // false отключает превью ссылок согласно документации MAX API
     splitLongMessages: true,    // true: разбивать сообщения длиннее 4000 символов, false: обрезать
     timeout: 10,                // таймаут запроса к MAX API в секундах
+    baseUrl: null,              // null — https://platform-api.max.ru
 );
 
 $logger->pushHandler($handler);
@@ -63,6 +64,59 @@ $handler
 
 Параметр `disableLinkPreview` передается в MAX API как `disable_link_preview`. Согласно документации MAX API, значение `false` отключает превью ссылок.
 
+## Адрес API и сертификаты
+
+Параметр `baseUrl` задаёт адрес MAX Bot API. По умолчанию — `https://platform-api.max.ru`.
+
+Документация MAX указывает на другой домен, `platform-api2.max.ru`, но переключаться на него стоит осознанно: домены отличаются не только адресом, но и тем, кто выписал им сертификат.
+
+| домен | издатель сертификата |
+| --- | --- |
+| `platform-api.max.ru` | Let's Encrypt |
+| `platform-api2.max.ru` | НУЦ Минцифры (`Russian Trusted Root CA`) |
+
+Корня НУЦ Минцифры нет ни в `ca-certificates`, ни в бандлах браузеров, поэтому запрос к `platform-api2` падает с `cURL error 60: SSL certificate problem` ещё до авторизации, пока корень не добавлен в доверенные на сервере:
+
+```shell
+curl -sS -o root.cer https://gu-st.ru/content/Other/doc/russian_trusted_root_ca.cer
+sudo install -m 644 root.cer /usr/local/share/ca-certificates/russian_trusted_root_ca.crt
+sudo update-ca-certificates
+```
+
+После этого домен задаётся параметром:
+
+```php
+$handler = new MaxBotHandler(
+    accessToken: 'access_token',
+    chatId: 987654321,
+    baseUrl: 'https://platform-api2.max.ru',
+);
+```
+
+Умолчание оставлено прежним намеренно: смена домена по умолчанию сломала бы отправку у всех, кто не добавлял корень в доверенные. Если адрес снова сменится, его можно задать здесь, не дожидаясь обновления пакета.
+
+## Устойчивость: сбои отправки и повторы
+
+Handler сообщает о неудачной отправке исключением `RuntimeException` — так же, как штатный `TelegramBotHandler` из Monolog. Решение о том, что делать со сбоем, остаётся за приложением. Это важно, когда логи уходят в MAX прямо из обработчика ошибок: недоступность мессенджера не должна подменять собой исходную аварию.
+
+Чтобы сбой отправки не всплывал в приложение, оберните handler в `WhatFailureGroupHandler`:
+
+```php
+use Monolog\Handler\WhatFailureGroupHandler;
+
+$logger->pushHandler(new WhatFailureGroupHandler([$handler]));
+```
+
+Чтобы одна и та же ошибка не заливала чат (зациклившийся баг — это тысячи одинаковых записей), добавьте `DeduplicationHandler`:
+
+```php
+use Monolog\Handler\DeduplicationHandler;
+
+$logger->pushHandler(new DeduplicationHandler($handler, time: 60));
+```
+
+Обёртки комбинируются: `WhatFailureGroupHandler` снаружи, `DeduplicationHandler` внутри.
+
 ## Как получить ID получателя
 
 `chat_id` можно взять из URL веб-версии MAX при открытии нужного чата.
@@ -71,7 +125,7 @@ $handler
 
 ## Тесты
 
-Тесты handler ходят в реальный MAX API. Для запуска добавьте `code/backend/.env`:
+Тесты handler ходят в реальный MAX API. Для запуска добавьте `.env` в корне пакета:
 
 ```dotenv
 MAX_TOKEN=access_token
